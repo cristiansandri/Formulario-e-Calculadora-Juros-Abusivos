@@ -1,30 +1,11 @@
-// ========== Unificação das funções e Validação para abrir modal =========== //
-function processarFormulario(botao) {
-    const form = document.getElementById('form-juros-abusivos');
-    if (!form.checkValidity()) {
-        form.reportValidity();
-        return; 
-    }
-    enviarEvento();
-    enviarForm();
-    
-const modalId = botao.getAttribute('data-modal');
-    const modal = document.getElementById(modalId);
-
-    if (modal) {
-        modal.showModal();
-        document.body.classList.add('sem-scroll');
-    }
-}
-
 // ==================== Enviar Evento ========================== //
 function enviarEvento() {
     const selecaoDivida = document.getElementById('valor-divida').value;
     if (selecaoDivida === "abaixo-50mil") {
-        fbq('trackCustom', 'LeadNaoQualificado', { valor: selecaoDivida });
+        fbq('trackCustom', 'Lead Não Qualificado', { valor: selecaoDivida });
         console.log("Evento: Lead Não Qualificado");
     } else if (selecaoDivida === "entre-50-350mil" || selecaoDivida === "acima-350mil") {
-        fbq('track', 'Lead', { 
+        fbq('track', 'Lead Qualificado', {
             content_category: 'Calculadora de Dívida',
             status: 'Qualificado'
         });
@@ -36,7 +17,7 @@ function enviarEvento() {
 async function enviarForm() {
     const form = document.getElementById('form-juros-abusivos');
     const formData = new FormData(form);
-    const url = "https://script.google.com/macros/s/AKfycbyNZA-0vVlxPcnkdNfjLtgEXTCX7mamC2-BKfhyzT5MtsfAtg2vjLRJYpvTxhZdzaDT/exec"; // O URL que o Apps Script vai gerar
+    const url = "https://script.google.com/macros/s/AKfycbyNZA-0vVlxPcnkdNfjLtgEXTCX7mamC2-BKfhyzT5MtsfAtg2vjLRJYpvTxhZdzaDT/exec"; // O URL do Apps Script 
 
     try {
         const response = await fetch(url, {
@@ -49,6 +30,26 @@ async function enviarForm() {
         console.error("Erro ao enviar formulário:", error);
     }
 }
+
+// ========== Unificação das funções e Validação para abrir modal =========== //
+function processarFormulario(botao) {
+    const form = document.getElementById('form-juros-abusivos');
+    if (!form.checkValidity()) {
+        form.reportValidity();
+        return;
+    }
+    enviarEvento();
+    enviarForm();
+
+    const modalId = botao.getAttribute('data-modal');
+    const modal = document.getElementById(modalId);
+
+    if (modal) {
+        modal.showModal();
+        document.body.classList.add('sem-scroll');
+    }
+}
+
 
 // ==================== Fechar POPUP ==================== //
 const closeButtons = document.querySelectorAll('.close-modal');
@@ -229,17 +230,17 @@ function calcularJuros() {
     } else if (percentualDiferenca >= thresholdLow && percentualDiferenca < thresholdMedium) {
         probabilityText = "Pouca Probabilidade de Abusividade";
         descriptionMessage = `Sua taxa de juros (<b>${taxaContratadoMensal.toFixed(2)}% a.m.</b>) parece estar próxima da taxa média de mercado do BACEN <b> cerca de ${taxaBacenMensal.toFixed(2)}% a.m.</b> para operações de ${tipoCliente === 'juridica' ? 'Pessoa Jurídica' : 'Pessoa Física'}.<br><br>A diferença é de <b>${percentualDiferenca.toFixed(2)}%</b> em relação à taxa média, o que pode indicar baixa probabilidade de ser considerada abusiva pela justiça (geralmente acima de 50% de diferença).`;
-        probabilityClass = "low";
+        probabilityClass = "baixa";
 
     } else if (percentualDiferenca >= thresholdMedium && percentualDiferenca < thresholdHigh) {
         probabilityText = "Média Probabilidade de Abusividade";
         descriptionMessage = `Sua taxa de juros (<b>${taxaContratadoMensal.toFixed(2)}% a.m.</b>) parece estar moderadamente acima da taxa média de mercado do BACEN cerca de <b>${taxaBacenMensal.toFixed(2)}% a.m.</b> para operações de ${tipoCliente === 'juridica' ? 'Pessoa Jurídica' : 'Pessoa Física'}.<br><br>A diferença é de <b>${percentualDiferenca.toFixed(2)}%</b> em relação à taxa média, o que pode indicar uma média probabilidade de ser considerada abusiva pela justiça (geralmente acima de 50% de diferença).`;
-        probabilityClass = "medium";
+        probabilityClass = "media";
 
     } else {
         probabilityText = "Alta Probabilidade de Abusividade";
         descriptionMessage = `Sua taxa de juros (<b>${taxaContratadoMensal.toFixed(2)}% a.m.</b>) parece estar significativamente acima da taxa média aprox. de mercado do BACEN cerca de <b>${taxaBacenMensal.toFixed(2)}% a.m.</b> para operações de ${tipoCliente === 'juridica' ? 'Pessoa Jurídica' : 'Pessoa Física'}.<br><br>A diferença é de <b>${percentualDiferenca.toFixed(2)}%</b> em relação à taxa média aprox., o que pode indicar uma alta probabilidade de ser considerada abusiva pela justiça (geralmente acima de 50% de diferença).`;
-        probabilityClass = "high";
+        probabilityClass = "alta";
     }
 
 
@@ -257,51 +258,63 @@ function calcularJuros() {
     let progressBarWidth = ((clampedPercentDiffForBar - minPercentBar) / percentRangeBar) * 100;
     progressBarWidth = Math.max(0, progressBarWidth);
 
+    const percentualCorLimitado = Math.max(0, Math.min(100, percentualDiferenca));
+    const tomDeCor = 120 - (percentualCorLimitado * 1.2);
+    const corFinal = `hsl(${tomDeCor}, 90%, 45%)`;
 
     const resultHTML = `
-             <div class="progress-bar-section">
-                 <p class="probability-text ${probabilityClass}" id="probabilityText">${probabilityText}</p>
-                 <div class="progress-bar-container">
-                     <div class="progress-bar ${probabilityClass}" id="progressBar" style="width: 0%;"></div>
-                     <span class="progress-text" id="progressText">${percentualDiferenca.toFixed(2)}%</span>
-                 </div>
-                <div class="description-box">
-                     <p><strong>Entenda o resultado:</strong></p>
-                     <p id="descriptionMessage">${descriptionMessage}</p>
-                </div>
-             </div>
+    <section class="result-section">
+        <div class="progress-bar-section">
+            <p class="probability-text ${probabilityClass}" id="probabilityText">${probabilityText}</p>
+            <div class="progress-bar-container">
+                <div class="progress-bar" id="progressBar" style="width: 0%; background-color: hsl(120, 90%, 45%);"></div>
+                <span class="progress-text" id="progressText">${percentualDiferenca.toFixed(2)}%</span>
+            </div>
 
-             <div class="flex-container" id="resultBoxes">
-                 <div class="box box-taxa-bacen">
-                     <span class="highlight" data-value="${taxaBacenMensal.toFixed(2)}" data-type="percent">${taxaBacenMensal.toFixed(2)}% a.m.</span>
-                     <p>Taxa média aprox. do BACEN para ${tipoCliente === 'juridica' ? 'PJ' : 'PF'}</p>
-                 </div>
-                 <div class="box box-taxa-contrato ${shouldBeRed ? 'red' : ''}">
-                     <span class="highlight" data-value="${taxaContratadoMensal.toFixed(2)}" data-type="percent">${taxaContratadoMensal.toFixed(2)}% a.m.</span>
-                     <p>Taxa de Juros do Contrato</p>
-                 </div>
-                  <div class="box box-percentual-diferenca ${shouldBeRed ? 'red' : ''}">
-                      <span class="highlight" data-value="${percentualDiferenca.toFixed(2)}" data-type="percent">${percentualDiferenca.toFixed(2)}%</span>
-                      <p>% acima/abaixo da taxa aprox. do BACEN</p>
-                  </div>
-                 <div class="box box-valor-contratado">
-                     <span class="highlight" data-value="${valorContratado}" data-type="currency">${formatarValor(valorContratado)}</span>
-                      <p>Valor Contratado</p>
-                 </div>
-                  <div class="box box-valor-total-pago ${shouldBeRed ? 'red' : ''}">
-                      <span class="highlight" data-value="${valorTotalPago}" data-type="currency">${formatarValor(valorTotalPago)}</span>
-                      <p>Total a pagar parcelado</p>
-                  </div>
-                  <div class="box box-juros-totais ${shouldBeRed ? 'red' : ''}">
-                      <span class="highlight" data-value="${jurosTotais}" data-type="currency">${formatarValor(jurosTotais)}</span>
-                      <p>Total líquido de juros a pagar</p>
-                  </div>
-             </div>
+            <div class="description-box">
+                <p><strong>Entenda o resultado:</strong></p>
+                <p id="descriptionMessage">${descriptionMessage}</p>
+            </div>
+        </div>
 
-             <a href="javascript:void(0);" onclick="enviarWhatsApp()" class="whatsapp-button">
-                Reduza sua dívida! Fale conosco.
-             </a>
-         `;
+        
+        <div class="flex-container" id="resultBoxes">
+            <div class="box box-taxa-bacen">
+                <span class="highlight" data-value="${taxaBacenMensal.toFixed(2)}" data-type="percent">${taxaBacenMensal.toFixed(2)}% a.m.</span>
+                <p>Taxa média aprox. do BACEN para ${tipoCliente === 'juridica' ? 'PJ' : 'PF'}</p>
+            </div>
+            
+            <div class="box box-taxa-contrato ${shouldBeRed ? 'red' : ''}">
+                <span class="highlight" data-value="${taxaContratadoMensal.toFixed(2)}" data-type="percent">${taxaContratadoMensal.toFixed(2)}% a.m.</span>
+                <p>Taxa de Juros do Contrato</p>
+            </div>
+
+            <div class="box box-percentual-diferenca ${shouldBeRed ? 'red' : ''}">
+                <span class="highlight" data-value="${percentualDiferenca.toFixed(2)}" data-type="percent">${percentualDiferenca.toFixed(2)}%</span>
+                <p>% acima/abaixo da taxa aprox. do BACEN</p>
+            </div>
+
+            <div class="box box-valor-contratado">
+                <span class="highlight" data-value="${valorContratado}" data-type="currency">${formatarValor(valorContratado)}</span>
+                <p>Valor Contratado</p>
+            </div>
+
+            <div class="box box-valor-total-pago ${shouldBeRed ? 'red' : ''}">
+                <span class="highlight" data-value="${valorTotalPago}" data-type="currency">${formatarValor(valorTotalPago)}</span>
+                <p>Total a pagar parcelado</p>
+            </div>
+
+            <div class="box box-juros-totais ${shouldBeRed ? 'red' : ''}">
+                <span class="highlight" data-value="${jurosTotais}" data-type="currency">${formatarValor(jurosTotais)}</span>
+                <p>Total líquido de juros a pagar</p>
+            </div>
+        </div>
+
+        <a href="javascript:void(0);" onclick="enviarWhatsApp()" class="whatsapp-button">
+                Reduza sua dívida! Fale conosco.</a>
+
+    </section">
+        `;
 
     resultadoDiv.innerHTML = resultHTML;
     document.getElementById('resultado').style.display = 'block';
@@ -311,6 +324,7 @@ function calcularJuros() {
         requestAnimationFrame(() => {
             setTimeout(() => {
                 progressBar.style.width = `${progressBarWidth}%`;
+                progressBar.style.backgroundColor = corFinal;
             }, 50);
         });
     }
