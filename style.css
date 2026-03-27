@@ -9,6 +9,10 @@ html {
     scroll-behavior: smooth;
 }
 
+a {
+    color: var(--primaria);
+    text-decoration: none;
+}
 
 ::-webkit-scrollbar {
     width: 25px;   
@@ -217,9 +221,6 @@ dialog p {
     margin-bottom: 20px;
 }
 
-dialog a {
-    color: var(--primaria);
-}
 
 .input-group {
     display: flex;
